@@ -136,7 +136,8 @@ def debug_env():
         'all_env_keys': list(os.environ.keys())
     })
 
-@app.route('/')def index():
+@app.route('/')
+def index():
     return render_template('index.html')
 
 @app.route('/api/templates', methods=['GET'])
