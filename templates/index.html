@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NP FAQ Reply Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            gap: 20px;
+        }
+
+        .main-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .templates-sidebar {
+            width: 300px;
+            max-height: 90vh;
+            overflow-y: auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+        }
+
+        .templates-sidebar h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .category {
+            margin-bottom: 20px;
+        }
+
+        .category-title {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 8px;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .category-title:hover {
+            background: #e8e8f0;
+        }
+
+        .category-title .arrow {
+            transition: transform 0.3s;
+        }
+
+        .category-title.collapsed .arrow {
+            transform: rotate(-90deg);
+        }
+
+        .templates-list {
+            display: none;
+            padding-left: 10px;
+        }
+
+        .templates-list.show {
+            display: block;
+        }
+
+        .template-item {
+            background: #fafafa;
+            padding: 8px 10px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            color: #555;
+            border-left: 3px solid #667eea;
+            line-height: 1.4;
+            max-height: 80px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .templates-sidebar {
+                width: 100%;
+                max-height: 300px;
+            }
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1em;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 24px;
+            font-size: 1em;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-generate {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-generate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-generate:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-copy {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-copy:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-clear {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .btn-clear:hover {
+            background: #ee5a52;
+        }
+
+        .reply-section {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .reply-section h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .reply-text {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            line-height: 1.6;
+            color: #333;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .loading {
+            text-align: center;
+            color: #667eea;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f0f0f0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #c33;
+        }
+
+        .success {
+            background: #efe;
+            color: #3c3;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #3c3;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+        <div class="container">
+            <div class="main-content">
+                <div class="header">
+                    <h1>📧 NP FAQ Reply Generator</h1>
+                    <p>Instantly find the best template response for student inquiries</p>
+                </div>
+
+                <div class="card">
+                    <form id="faqForm">
+                        <div class="form-group">
+                            <label for="faqInput">Paste the FAQ/Inquiry:</label>
+                            <textarea id="faqInput" placeholder="Paste the student FAQ or inquiry here..." required></textarea>
+                        </div>
+
+                        <div class="button-group">
+                            <button type="submit" class="btn-generate">Generate Reply</button>
+                            <button type="reset" class="btn-clear">Clear</button>
+                        </div>
+                    </form>
+
+                    <div id="loading" class="loading hidden">
+                        <div class="spinner"></div>
+                        <p>Finding the best template...</p>
+                    </div>
+
+                    <div id="errorMessage" class="error hidden"></div>
+                    <div id="successMessage" class="success hidden"></div>
+
+                    <div id="replyContainer" class="reply-section hidden">
+                        <h2>Template Reply:</h2>
+                        <div id="replyText" class="reply-text"></div>
+                        <div class="button-group" style="margin-top: 15px;">
+                            <button class="btn-generate" onclick="copyToClipboard()">Copy Reply</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="templates-sidebar">
+                <h3>📋 Available Templates</h3>
+                <div id="templatesContainer"></div>
+            </div>
+        </div>
+
+    <script>
+        const form = document.getElementById('faqForm');
+        const faqInput = document.getElementById('faqInput');
+        const loading = document.getElementById('loading');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        const replyContainer = document.getElementById('replyContainer');
+        const replyText = document.getElementById('replyText');
+        const templatesContainer = document.getElementById('templatesContainer');
+
+        // Load templates on page load
+        async function loadTemplates() {
+            try {
+                const response = await fetch('/api/templates');
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to load templates');
+                }
+
+                displayTemplates(data.templates);
+            } catch (error) {
+                console.error('Error loading templates:', error);
+                templatesContainer.innerHTML = '<p style="color: #c33;">Failed to load templates</p>';
+            }
+        }
+
+        function displayTemplates(templates) {
+            // Group templates by category
+            const grouped = {};
+            templates.forEach(item => {
+                if (!grouped[item.category]) {
+                    grouped[item.category] = [];
+                }
+                grouped[item.category].push(item.text);
+            });
+
+            // Render categories and templates
+            let html = '';
+            Object.keys(grouped).forEach(category => {
+                const categoryTemplates = grouped[category];
+                html += `
+                    <div class="category">
+                        <div class="category-title" onclick="toggleCategory(this)">
+                            ${category} (${categoryTemplates.length})
+                            <span class="arrow">▶</span>
+                        </div>
+                        <div class="templates-list">
+                            ${categoryTemplates.map((template, idx) => `
+                                <div class="template-item" title="${template}">
+                                    ${template.substring(0, 60)}...
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+
+            templatesContainer.innerHTML = html;
+        }
+
+        function toggleCategory(element) {
+            element.classList.toggle('collapsed');
+            element.nextElementSibling.classList.toggle('show');
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const faq = faqInput.value.trim();
+            if (!faq) {
+                showError('Please enter an FAQ');
+                return;
+            }
+
+            // Clear previous messages
+            hideMessages();
+            loading.classList.remove('hidden');
+            replyContainer.classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/generate-reply', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ faq })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to generate reply');
+                }
+
+                replyText.textContent = data.reply;
+                replyContainer.classList.remove('hidden');
+                showSuccess('Template found!');
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                loading.classList.add('hidden');
+            }
+        });
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.remove('hidden');
+        }
+
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.classList.remove('hidden');
+        }
+
+        function hideMessages() {
+            errorMessage.classList.add('hidden');
+            successMessage.classList.add('hidden');
+        }
+
+        function copyToClipboard() {
+            const text = replyText.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                showSuccess('Reply copied to clipboard!');
+            }).catch(err => {
+                showError('Failed to copy');
+            });
+        }
+
+        // Load templates when page loads
+        loadTemplates();
+    </script>
+</body>
+</html>
