@@ -127,8 +127,16 @@ Write your response:"""
 
     return response.choices[0].message.content
 
-@app.route('/')
-def index():
+@app.route('/debug/env', methods=['GET'])
+def debug_env():
+    """Debug endpoint - shows environment variables (remove in production)"""
+    return jsonify({
+        'GROQ_API_KEY': 'SET' if os.getenv('GROQ_API_KEY') else 'NOT SET',
+        'PORT': os.getenv('PORT', 'not set'),
+        'all_env_keys': list(os.environ.keys())
+    })
+
+@app.route('/')def index():
     return render_template('index.html')
 
 @app.route('/api/templates', methods=['GET'])
