@@ -3,9 +3,6 @@ import openpyxl
 from groq import Groq
 import json
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 app = Flask(__name__)
 
@@ -17,6 +14,7 @@ try:
         raise ValueError("GROQ_API_KEY environment variable not set")
     client = Groq(api_key=api_key)
     print("✓ Groq API available")
+    print(f"✓ API Key found (length: {len(api_key)})")
 except Exception as e:
     print(f"Warning: Groq initialization failed: {e}")
     print("Set GROQ_API_KEY environment variable to use the bot")
