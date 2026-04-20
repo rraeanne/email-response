@@ -92,30 +92,90 @@ def get_faq_by_id(faq_id):
 
 def extract_faqs_from_text(text):
     """
-    Extract FAQ entries from text using intelligent chunking
-    Looks for Q[number].[number]: pattern and extracts Q&A pairs
+    Extract FAQ entries from text using intelligent chunking.
+    Supports multiple formats:
+    1. Q[num].[num]: ... A: ... pattern (numbered FAQs)
+    2. Plain Q&A where questions end with "?" (simple Q&A)
     """
     import re
 
-    faqs = []
+    # First, try detecting which format is used
+    if re.search(r'^Q\d+\.\d+:', text, re.MULTILINE):
+        # Format 1: Numbered Q1.1 pattern
+        return _extract_numbered_faqs(text)
+    else:
+        # Format 2: Simple Q&A with questions ending in "?"
+        return _extract_simple_faqs(text)
 
-    # Split into lines
+
+def _extract_numbered_faqs(text):
+    """Extract FAQ entries with Q[num].[num]: pattern"""
+    import re
+    faqs = []
     lines = text.split('\n')
 
-    # Skip table of contents (usually at the beginning)
-    # Look for the first real FAQ pattern
+    # Skip table of contents
     start_idx = 0
     for i, line in enumerate(lines):
         if re.match(r'^Q\d+\.\d+:', line.strip()):
             start_idx = i
             break
-
     lines = lines[start_idx:]
 
-    # Parse FAQ entries with pattern Q[num].[num]:
     current_q = None
     current_a = None
     current_section = 'General'
+
+    for line in lines:
+        line_stripped = line.strip()
+        if not line_stripped:
+            continue
+
+        # Detect section headers
+        if re.match(r'^[A-Z][A-Za-z\s&\-\/\(\)]+$', line_stripped) and ':' not in line_stripped:
+            if line_stripped and len(line_stripped) < 50:
+                current_section = line_stripped
+                continue
+
+        # Detect Q&A pattern: Q[num].[num]:
+        q_match = re.match(r'^Q\d+\.\d+:\s*(.+)$', line_stripped)
+        if q_match:
+            # Save previous Q&A
+            if current_q and current_a:
+                faqs.append({
+                    'section': current_section,
+                    'q': current_q.strip(),
+                    'a': current_a.strip()
+                })
+            current_q = q_match.group(1)
+            current_a = None
+        # Detect answer pattern
+        elif line_stripped.startswith('A:'):
+            current_a = line_stripped[2:].strip()
+        elif current_q and current_a is None:
+            current_q += ' ' + line_stripped
+        elif current_a is not None:
+            current_a += ' ' + line_stripped
+
+    # Save last Q&A
+    if current_q and current_a:
+        faqs.append({
+            'section': current_section,
+            'q': current_q.strip(),
+            'a': current_a.strip()
+        })
+
+    return faqs
+
+
+def _extract_simple_faqs(text):
+    """Extract FAQ entries where questions end with '?'"""
+    import re
+    faqs = []
+    lines = text.split('\n')
+
+    current_q = None
+    current_a_lines = []
 
     for line in lines:
         line_stripped = line.strip()
@@ -123,47 +183,33 @@ def extract_faqs_from_text(text):
         if not line_stripped:
             continue
 
-        # Detect section headers (all caps or title case followed by colon, not a Q&A)
-        if re.match(r'^[A-Z][A-Za-z\s&\-\/\(\)]+$', line_stripped) and ':' not in line_stripped:
-            # This is likely a section header
-            if line_stripped and len(line_stripped) < 50:
-                current_section = line_stripped
-                continue
-
-        # Detect Q&A pattern: Q[num].[num]:
-        q_match = re.match(r'^Q\d+\.\d+:\s*(.+)$', line_stripped)
-
-        if q_match:
+        # Detect question (ends with ?)
+        if line_stripped.endswith('?'):
             # Save previous Q&A if exists
-            if current_q and current_a:
-                faqs.append({
-                    'section': current_section,
-                    'q': current_q.strip(),
-                    'a': current_a.strip()
-                })
+            if current_q and current_a_lines:
+                answer_text = ' '.join(current_a_lines).strip()
+                if answer_text:  # Only save if there's actual answer content
+                    faqs.append({
+                        'section': 'General',
+                        'q': current_q.strip(),
+                        'a': answer_text
+                    })
 
             # Start new Q&A
-            current_q = q_match.group(1)
-            current_a = None
+            current_q = line_stripped
+            current_a_lines = []
+        elif current_q:
+            # This is part of the answer
+            current_a_lines.append(line_stripped)
 
-        # Detect Answer pattern: A: or line after Q that continues
-        elif line_stripped.startswith('A:'):
-            current_a = line_stripped[2:].strip()
-
-        elif current_q and current_a is None:
-            # Continuation of question (multiline Q)
-            current_q += ' ' + line_stripped
-
-        elif current_a is not None:
-            # Continuation of answer (multiline A)
-            current_a += ' ' + line_stripped
-
-    # Don't forget the last Q&A
-    if current_q and current_a:
-        faqs.append({
-            'section': current_section,
-            'q': current_q.strip(),
-            'a': current_a.strip()
-        })
+    # Save last Q&A
+    if current_q and current_a_lines:
+        answer_text = ' '.join(current_a_lines).strip()
+        if answer_text:
+            faqs.append({
+                'section': 'General',
+                'q': current_q.strip(),
+                'a': answer_text
+            })
 
     return faqs
